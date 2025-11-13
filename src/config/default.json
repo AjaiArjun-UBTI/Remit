@@ -1,8 +1,8 @@
 {
-    "DF_APP_ID": "Add APP ID Here",
-    "DF_TENANT_ID": "Add Tenant ID Here",
-    "DF_API_URL": "Add API URL Here",
-    "DF_AppEnvironmentCODE": "Add App Environment Code Here",
-    "DF_API_VERSION": "Add API Version Here",
-    "PUBLIC_MENU_LOCATION": "Add Menu Location Here"
+    "DF_APP_ID": 298,
+    "DF_TENANT_ID": 282,
+    "DF_API_URL": "https://ubti-stage-df-api.azurewebsites.net",
+    "DF_AppEnvironmentCODE": "01K7RXNBPAD7T0K1H46BP7JJGR",
+    "DF_API_VERSION": "v1",
+    "PUBLIC_MENU_LOCATION": "side"
 }

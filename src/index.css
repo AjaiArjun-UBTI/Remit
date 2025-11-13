@@ -1,3 +1,291 @@
+/* ── 1. Import Fonts (Poppins + Bricolage Grotesque) ── */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap');
+
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+/* ── 2. Global Resets ── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  list-style: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── 3. Root Variables ── */
+:root {
+  /* Colors */
+  --primary-color: #3f634d;
+  --primary-light: #3c8968;
+  --text-color: #244034;
+  --secondary-color: #d2f34c;
+  --text-light: rgba(0, 0, 0, 0.5);
+  --gray-light-color: rgba(36, 64, 52, 0.5);
+  --red: #ff2730;
+  --white: #fff;
+  --black: #000;
+
+  /* Fonts */
+  --bricolage-font: 'Bricolage Grotesque', sans-serif;
+  --poppins-font: 'Poppins', sans-serif;
+
+  /* Transitions */
+  --transition-regular: 0.3s;
+  --transition-slow: 0.6s;
+}
+
+/* ── 4. Body & Default Font ── */
+body {
+  font-family: var(--poppins-font);
+  background-color: #f9fafb; /* light mode */
+  color: var(--text-color);
+  overflow-y: auto; /* allow scroll */
+}
+
+/* Dark Mode */
+.dark {
+  background-color: #111827; /* gray-900 */
+  color: #f3f4f6; /* gray-100 */
+}
+
+/* ── 5. Utility Classes ── */
+.font-bricolage {
+  font-family: var(--bricolage-font) !important;
+}
+
+.font-poppins {
+  font-family: var(--poppins-font) !important;
+}
+
+.sidebar{
+    height: 100vh;
+    min-height: 100vh;
+    position: absolute;
+    overflow-y: scroll;
+    z-index: 999;
+    scrollbar-width: none;
+    scrollbar-color: #ccc transparent;
+}
+
+.sidebar::-webkit-scrollbar{
+    width: 1px;
+}
+
+.sidebar::-webkit-scrollbar-thumb{
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+.user-name::after{
+    display: inline-block;
+    margin-left: 10px;
+    vertical-align: 2px;
+    content: '';
+    border-top: .3rem solid;
+    border-right: .3rem solid transparent;
+    border-bottom: 0;
+    border-left: .3rem solid transparent;
+}
+
+.dropdown-menu{
+    position: absolute;
+    inset: 0 auto auto 0;
+    margin: 0;
+    transform: translate(0px, 50px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    width: 100%;
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.dashboard-main-nav li a.active{
+    background-color: var(--primary-color);
+    color: var(--white);
+}
+
+.dashboard-main-nav li a.active img:nth-child(1){
+    display: none;
+}
+
+.dashboard-main-nav li a.active img:nth-child(2){
+    display: block;
+}
+
+.dashboard-main-nav li a:hover{
+    color: var(--primary-light);
+}
+
+.process-line{
+    width: 100%;
+    background-color: var(--primary-color);
+    height: 5px;
+    position: relative;
+    border-radius: 30px;
+    margin:14px 0; 
+}
+
+.process-line::after{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80%;
+    height: 100%;
+    background-color: var(--secondary-color);
+    border-radius: 30px;
+}
+
+
+
+.main{
+    padding: 115px 55px 50px;
+    min-height: 100vh;
+    height: 100vh;
+    overflow-y: scroll;
+    border: 50px 0 0 50px;
+}
+
+.nav-main{
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 50px;
+}
+
+.badge-pill{
+    position: absolute;
+    right: -3px;
+    top: -3px;
+    width: 7px;
+    height: 7px;
+    background-color: var(--red);
+    border-radius: 50px;
+}
+
+.notification-item h6{
+    letter-spacing: -.2px;
+    width: 90%;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.dashboard-item{
+    padding: 22px 35px 34px;
+    z-index: 1;
+}
+
+.dashboard-item::after{
+    content: '';
+    position:absolute;
+    top: 12px;
+    left: 12px;
+    bottom: -10px;
+    right: 12px;
+    z-index: 0;
+    border-radius: 30px;
+    background: hsla(0,0%, 100%, 0.6);
+}
+
+.dark .dashboard-item::after {
+  background: rgba(55, 65, 81, 0.9); /* dark gray with transparency */
+}
+
+@media screen and (max-width:1440px){
+    .main{
+        padding: 105px 30px 0.5em;
+    }
+
+    .nav-main{
+        padding: 0px 30px;
+    }
+}
+
+.header-text{
+    padding:  25px 0px 25px 30px;
+    font-size: 1.5rem;
+}
+
+.header-body-content{
+    padding: 25px 25px 25px 30px;
+}
+
+.content::-webkit-scrollbar{
+    display: none;
+}
+
+@media screen and (max-width:767px){
+    .main{
+        padding: 105px 30px 0.5em;
+    }
+
+    .nav-main{
+        padding: 0px 30px;
+    }
+}
+
+@media screen and (max-width:1100px){
+    .content{
+        overflow-y: scroll;
+    }
+}
+
+.profile-container input{
+    width: 100% !important;
+    height: 55px !important;
+    letter-spacing:  .16pz !important;
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 7px !important;
+    font-size: 1.1rem;
+    padding: 0 20ps !important;
+    outline: none !important;
+
+    &::placeholder{
+        font-weight: 200 !important
+    }
+}
+
+.profile-container textarea{
+    width: 100% !important;
+    letter-spacing:  .16pz !important;
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 7px !important;
+    font-size: 1.1rem;
+    padding: 0 20ps !important;
+    outline: none !important;
+
+    &::placeholder{
+        font-weight: 200 !important
+    }
+}
+
+/* ── 6. Logo Text (use .font-bricolage in JSX) ── */
+.logo h2,
+.logo h2 span {
+  @apply font-bricolage;
+}

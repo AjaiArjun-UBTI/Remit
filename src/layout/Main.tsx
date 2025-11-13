@@ -1,19 +1,30 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { DiligenceFabricClient } from '@ubti/diligence-fabric-sdk';
+// src/layout/Main.tsx
+import Header from "../components/header";
+import Sidebar from "../components/sidebar";
+import Footer from "../components/footer";
+import { Outlet } from "react-router-dom";
 
-import config from '../config/default.json'
 
-const dfClient = new DiligenceFabricClient(config);
-console.log(dfClient);
+export default function Main() {
+  
 
-const Main: React.FC = () => {
   return (
-    <div>
-      <Outlet />
-      <footer className='flex justify-center'>© {new Date().getFullYear()} UB Technology Innovations, Inc.</footer>
-    </div>
+<div className="flex flex-col h-screen bg-[#f0f5f3] dark:bg-gray-900">
+  {/* HEADER – flows naturally */}
+  <Header  />
+
+  <div className="flex flex-1 min-h-0">
+    {/* SIDEBAR */}
+    <Sidebar />
+
+    {/* MAIN CONTENT */}
+    <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 overflow-y-auto pt-6 px-6">
+        <Outlet />
+      </div>
+      <Footer />
+    </main>
+  </div>
+</div>
   );
 }
-
-export default Main;

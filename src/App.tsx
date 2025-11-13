@@ -1,4 +1,4 @@
-// import { useState } from 'react'
+import { useState, useEffect } from 'react'
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
 // import './App.css'
@@ -39,6 +39,11 @@
 import './App.css'
 
 function App() {
+useEffect(() => {
+  fetch("http://localhost:5731/set-tenant", {
+    credentials: "include", // ← sends session cookie
+  }).catch(console.error);
+}, []);
 
   return (
     <>

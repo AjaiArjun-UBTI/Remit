@@ -20,11 +20,21 @@ export default {
 					700: '#00888A',
 					800: '#00888A',
 					900: '#00888A'
-				}
-      }
+				},
+	  text: {
+          DEFAULT: 'var(--text-color)',
+          light: 'var(--text-light)',
+        },
+      },
+      fontFamily: {
+        bricolage: ['var(--bricolage-font)', 'sans-serif'],
+        poppins: ['var(--poppins-font)', 'sans-serif'],
+      },
     }
+	
   },
   plugins: [
     require('flowbite/plugin')
   ],
+  
 }
