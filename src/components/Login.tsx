@@ -110,8 +110,11 @@ const Login: React.FC = () => {
         removeCookie('username');
       }
 
+      
+
       if (response.Result && response.Result.TenantID === config.DF_TENANT_ID) {
         localStorage.setItem("userData", JSON.stringify(response.Result));
+        sessionStorage.setItem("userData", JSON.stringify(response.Result));
         Toast.fire({
           icon: "success",
           text: "Login successful!",

@@ -4,6 +4,35 @@ import { getDiligenceFabricSDK } from "../services/DFService";
 import deletion from '../assets/Admin Dashboard UI/delete.svg'
 import { useEffect, useRef, useState } from 'react';
 
+
+// Define a proper type for your data
+interface LocalData {
+  TenantID: number;
+  TenantName: string;
+  TenantCODE: string;
+  AuthenticationTypeCODE: string;
+  Designation: string | null;
+  EmailAddress: string;
+  ExpiresUtc: string;
+  FirstName: string;
+  IsEmailVerified: boolean;
+  IsMeterBillingEnabled: boolean;
+  LastName: string;
+  MiddleName: string;
+  OrganizationIDs: number[];
+  OrganizationName: string;
+  ProductCode: string;
+  ProductID: number;
+  Roles: string;
+  SubscriptionId: string;
+  SubscriptionStatus: string;
+  Token: string;
+  UserID: number;
+  UserName: string;
+  AppProductIds: number[];
+}
+
+
 type Category = "Cab" | "Food" | "Stay" | "Others";
 
 const ClaimData = [
@@ -266,36 +295,83 @@ export default function MyClaims(){
     const filteredClaims = selectedSort === "All" ? claimsToDisplay : claimsToDisplay.filter(claim => claim.status === selectedSort);
 
     // Fetch user role from API
-    useEffect(() => {
-    const fetchTenant = async () => {
-      const res = await fetch("http://localhost:5731/get-tenant", {
-        credentials: "include",
-      });
-      const data = await res.json();
-      setTenantId(data.tenantId || "Not set");
-    };
+//     useEffect(() => {
+//     const fetchTenant = async () => {
+//       const res = await fetch("http://localhost:5731/get-tenant", {
+//         credentials: "include",
+//       });
+//       const data = await res.json();
+//       setTenantId(data.tenantId || "Not set");
+//     };
 
-    fetchTenant();
-  }, []);
-    useEffect(() => {
-        const fetchUserRole = async () => {
-            try {
-                // Uncomment when you have the SDK available
-                const client = getDiligenceFabricSDK();
+//     fetchTenant();
+//   }, []);
+
+
+useEffect(() => {
+  const fetchUserRole = async () => {
+    try {
+      const rawData = sessionStorage.getItem("userData");
+      if (!rawData) {
+        throw new Error("Session data not found");
+      }
+
+      const localData: LocalData = JSON.parse(rawData); // safe now
+
+      const payload = {
+        appId: 298,
+        tenantID: localData.TenantID,
+        userId: localData.UserID,
+        appEnvironmentCODE: "01K7RXNBPAD7T0K1H46BP7JJGR"
+      };
+
+      const client = getDiligenceFabricSDK();
+      const response = await client.getApplicationRoleService().getUserAppRole(payload);
+      const role = response?.Result?.[0];
+      console.log("Role fetched:", role);
+      // setUserRole(role?.toLowerCase() || "user");
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+      setUserRole("user"); // fallback
+    }
+  };
+
+  fetchUserRole();
+}, []);
+
+    // useEffect(() => {
+        
+    //     const fetchUserRole = async () => {
+    //         try {
+            
+    //         const rawData = sessionStorage.getItem('localData');
+    //         const localData: LocalData | null = rawData ? (JSON.parse(rawData) as LocalData) : null;
+
+    //         const payload = {
+    //         appId: 298,
+    //         tenantID: localData?.TenantID,
+    //         userId: localData?.UserID,
+    //         appEnvironmentCODE: "01K7RXNBPAD7T0K1H46BP7JJGR" };
+
+    //             // Uncomment when you have the SDK available
+    //             const client = getDiligenceFabricSDK();
+    //             const ress = client.getApplicationRoleService().getUserAppRole(payload);
+    //             // Avoid accessing private members (like appId) directly; log the service object instead.
+    //             console.log("Helllo", (await ress).Result[0]);
                 
 
-                //setUserRole(role.toLowerCase());
+    //             //setUserRole(role.toLowerCase());
                 
-                // For now, simulating with a mock role - change this to test different roles
-                // setUserRole("admin"); // Try "admin", "manager", "user" etc.
-                setUserRole("user");
-            } catch (error) {
-                console.error("Error fetching user role:", error);
-                setUserRole("user"); // Fallback to user role
-            }
-        };
-        fetchUserRole();
-    }, []);
+    //             // For now, simulating with a mock role - change this to test different roles
+    //             // setUserRole("admin"); // Try "admin", "manager", "user" etc.
+    //             setUserRole("user");
+    //         } catch (error) {
+    //             console.error("Error fetching user role:", error);
+    //             setUserRole("user"); // Fallback to user role
+    //         }
+    //     };
+    //     fetchUserRole();
+    // }, []);
 
     const handleApprove = (claim: any) => {
         console.log("Approving claim:", claim);
