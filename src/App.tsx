@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import {  useEffect } from 'react'
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
 // import './App.css'
@@ -48,6 +48,18 @@ useEffect(() => {
   return (
     <>
       <h1 className='bg-blue'>Hello UIAP</h1>
+      
+        <button
+  type="button"
+  onClick={async () => {
+    const res = await fetch("https://remitbackend-e5fahqdyejczf9ff.canadacentral-01.azurewebsites.net/");
+    const data = await res.json();
+    alert(JSON.stringify(data, null, 2));
+  }}
+  className="mt-4 px-6 py-3 bg-green-600 text-white rounded"
+>
+  TEST BACKEND (click me)
+</button>
     </>
   )
 }

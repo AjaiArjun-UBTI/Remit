@@ -2,37 +2,46 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Main from "../layout/Main";
 import Login from "../components/Login";
-import Home from "../pages/Home";
 import ChangePassword from "../components/Auth/ChangePassword";
 import ForgotPassword from "../components/Auth/ForgotPassword";
 import MyClaims from "../pages/MyClaims";
 import MyProfile from "../pages/MyProfile";
 import Submission from "../pages/SubmitClaim";
 import Claims from "../pages/Claims";
+import UserDashboard from "../pages/userdashboard";
+import ApproverDashboard from "../pages/approverdashboard";
+
+// New: A smart landing page that redirects based on role
+import RoleBasedRedirect from "../components/RoleBasedRedirect";
+import AdminrDashboard from "../pages/admindashboard";
 
 const router = createBrowserRouter([
-  // ── Public Routes (No Layout) ─────────────────────
+  // Public Routes
   { path: "/login", element: <Login /> },
   { path: "/forgot-password", element: <ForgotPassword /> },
 
-  // ── Protected Routes (Inside Main Layout) ────────
+  // Protected Layout
   {
     path: "/",
     element: <Main />,
     children: [
-      { index: true, element: <Navigate to="/home" replace /> },
-      { path: "home", element: <Home /> },
-      { path: "myclaims", element: <MyClaims /> },         // <- changed
-      { path: "myprofile", element: <MyProfile /> },       // <- changed
-      { path: "submission", element: <Submission /> },
+      // This will be our smart redirect after login
+      { index: true, element: <RoleBasedRedirect /> },
+      { path: "home", element: <RoleBasedRedirect /> }, // optional alias
+
+      { path: "userdashboard", element: <UserDashboard /> },
+      { path: "approverdashboard", element: <ApproverDashboard /> },
+      { path: "admindashboard", element: <AdminrDashboard /> },
+      { path: "myclaims", element: <MyClaims /> },
+      { path: "myprofile", element: <MyProfile /> },
+      { path: "submitaclaim", element: <Submission /> },
       { path: "claims", element: <Claims /> },
       { path: "change-password", element: <ChangePassword /> },
-      // Add more pages here
     ],
   },
 
-  // ── 404 ───────────────────────────────────────────
-  { path: "*", element: <Navigate to="/home" replace /> },
+  // Optional: Catch-all
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);
 
 export default router;

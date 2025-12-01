@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Backend Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 100px; background: #f0f0f0; }
+    button { padding: 20px 40px; font-size: 24px; background:#00ff00; border:none; border-radius:12px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h1>REMit – Backend Connectivity Test</h1>
+  <button onclick="test()">CLICK HERE TO TEST BACKEND</button>
+
+  <script>
+    async function test() {
+      try {
+        const r = await fetch("https://remitbackend-e5fahqdyejczf9ff.canadacentral-01.azurewebsites.net/");
+        const d = await r.json();
+        Swal.fire("BACKEND IS ALIVE!", JSON.stringify(d, null, 2), "success");
+      } catch (e) {
+        Swal.fire("BACKEND IS DEAD", "Status: " + (e.message || "no response"), "error");
+      }
+    }
+  </script>
+</body>
+</html>

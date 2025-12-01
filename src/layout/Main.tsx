@@ -9,7 +9,7 @@ export default function Main() {
   
 
   return (
-<div className="flex flex-col h-screen bg-[#f0f5f3] dark:bg-gray-900">
+<div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
   {/* HEADER – flows naturally */}
   <Header  />
 

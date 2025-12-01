@@ -1,592 +1,294 @@
-import edit from '../assets/Admin Dashboard UI/edit.svg'
-import eye from '../assets/Admin Dashboard UI/eye.svg'
-import { getDiligenceFabricSDK } from "../services/DFService";
-import deletion from '../assets/Admin Dashboard UI/delete.svg'
-import { useEffect, useRef, useState } from 'react';
+// src/pages/MyClaims.tsx
+import { useEffect, useState } from 'react';
+import { claimsApi } from '../services/claimsApi';
+import ClaimModal from '../components/claimmodal';
+import { Claim, LocalData } from '../services/claimsApi';
 
+export default function MyClaims() {
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-// Define a proper type for your data
-interface LocalData {
-  TenantID: number;
-  TenantName: string;
-  TenantCODE: string;
-  AuthenticationTypeCODE: string;
-  Designation: string | null;
-  EmailAddress: string;
-  ExpiresUtc: string;
-  FirstName: string;
-  IsEmailVerified: boolean;
-  IsMeterBillingEnabled: boolean;
-  LastName: string;
-  MiddleName: string;
-  OrganizationIDs: number[];
-  OrganizationName: string;
-  ProductCode: string;
-  ProductID: number;
-  Roles: string;
-  SubscriptionId: string;
-  SubscriptionStatus: string;
-  Token: string;
-  UserID: number;
-  UserName: string;
-  AppProductIds: number[];
-}
+  // Filters
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterType, setFilterType] = useState("All Types");
 
+  const [editingClaim, setEditingClaim] = useState<Claim | null>(null);
+  const [viewingClaim, setViewingClaim] = useState<Claim | null>(null);
 
-type Category = "Cab" | "Food" | "Stay" | "Others";
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
 
-const ClaimData = [
-    {
-        title: "Claim for Dinner Expenses",
-        date: "2023-08-15",
-        amount: 89.00,
-        status: "Approved",
-        type: "Food & Beverages",
-        location: "Hyderabad, India",
-        category: "Food" as Category,
-        description: "Team dinner at conference"
-    },
-    {
-        title: "Travel Reimbursement",
-        date: "2023-08-10",
-        amount: 150.00,
-        status: "Pending",
-        type: "Travel",
-        location: "Bangalore, India",
-        category: "Cab" as Category,
-        description: "Airport transportation"
-    },
-    {
-        title: "Claim for Night Cab",
-        date: "2023-08-05",
-        amount: 145.00,
-        status: "Rejected",
-        type: "Transport",
-        location: "Chennai, India",
-        category: "Cab" as Category,
-        description: "Late night client meeting"
-    },
-    {
-        title: "Office Supplies Reimbursement",
-        date: "2023-07-28",
-        amount: 75.00,
-        status: "Approved",
-        type: "Supplies",
-        location: "Chennai, India",
-        category: "Others" as Category,
-        description: "Office supplies for team"
+  // Updated getStatusConfig — matches ApprovalClaims exactly
+  const getStatusConfig = (status: number) => {
+    switch (status) {
+      case 1:
+        return {
+          label: "Approved (Level 1)",
+          color: "bg-blue-100 text-blue-800 ring-1 ring-blue-300/50 dark:bg-sky-900/70 dark:text-sky-100 dark:ring-blue-400/50",
+          dot: "bg-blue-500 dark:bg-blue-400",
+        };
+      case 2:
+        return {
+          label: "Pending",
+          color: "bg-yellow-100 text-yellow-800 ring-1 ring-yellow-300/50 dark:bg-amber-900/70 dark:text-amber-100 dark:ring-yellow-400/50",
+          dot: "bg-yellow-500 dark:bg-yellow-400",
+        };
+      case 3:
+        return {
+          label: "Rejected",
+          color: "bg-red-100 text-red-800 ring-1 ring-red-300/50 dark:bg-rose-900/80 dark:text-rose-100 dark:ring-red-400/60",
+          dot: "bg-red-500 dark:bg-red-400",
+        };
+      case 4:
+        return {
+          label: "Rejected (Admin)",
+          color: "bg-red-100 text-red-900 ring-1 ring-red-400/50 dark:bg-red-400/25 dark:text-red-300 dark:ring-red-400/70",
+          dot: "bg-red-600 dark:bg-red-400",
+        };
+      case 5:
+        return {
+          label: "Approved (Final)",
+          color: "bg-green-100 text-green-800 ring-1 ring-green-300/50 dark:bg-emerald-900/70 dark:text-emerald-100 dark:ring-emerald-400/60",
+          dot: "bg-green-500 dark:bg-emerald-400",
+        };
+      default:
+        return {
+          label: "Unknown",
+          color: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400",
+          dot: "bg-gray-500 dark:bg-gray-400",
+        };
     }
-];
-
-const statusColors: { [key: string]: string } = {
-    "Approved": "bg-green-500 text-green-800",
-    "Pending": "bg-yellow-300 text-yellow-800",
-    "Rejected": "bg-red-600 text-red-800"
-};
-
-function extractTenantId(service: unknown): string | null {
-    return (service as any)?.tenantId ?? null;
-}
-
-// Edit Modal Component
-function EditModal({ claim, onClose, viewOnly = false }: { claim: any; onClose: () => void; viewOnly?: boolean }) {
-  const [category, setCategory] = useState<Category>(claim.category);
-  const [reason, setReason] = useState("");
-  const [amount, setAmount] = useState<number | "">(claim.amount);
-  const [date, setDate] = useState<string>(claim.date);
-  const [description, setDescription] = useState(claim.description);
-  const [receipt, setReceipt] = useState<File | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement | null>(null);
-
-  const reset = () => {
-    setCategory(claim.category);
-    setReason("");
-    setAmount(claim.amount);
-    setDate(claim.date);
-    setDescription(claim.description);
-    setReceipt(null);
-    setMessage(null);
-    if (fileRef.current) fileRef.current.value = "";
   };
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    setReceipt(f);
-  };
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const raw = sessionStorage.getItem("userData");
+        if (!raw) throw new Error("Session expired");
+        const data: LocalData = JSON.parse(raw);
 
-  const validate = () => {
-    if (!date) return "Please select a date.";
-    if (!amount || Number(amount) <= 0) return "Enter a valid amount.";
-    if (category === "Others" && reason.trim().length === 0) return "Please provide a reason for 'Others'.";
-    return null;
-  };
-
-
-
-  const handleSubmit = () => {
-    const err = validate();
-    if (err) {
-      setMessage(err);
-      return;
-    }
-
-    const payload = {
-      category,
-      reason: category === "Others" ? reason.trim() : undefined,
-      amount: Number(amount),
-      date,
-      description: description.trim(),
-      receiptName: receipt?.name ?? null,
-      submittedAt: new Date().toISOString(),
+        const response = await claimsApi.getClaimsByRole(
+          data.UserID.toString(),
+          "User",
+          data.TenantID.toString()
+        );
+        setClaims(response || []);
+      } catch (err: any) {
+        setError(err.message || "Failed to load claims");
+      } finally {
+        setLoading(false);
+      }
     };
+    init();
+  }, []);
 
-    console.log("Updating expense:", payload);
-    setMessage("Updated successfully!");
-    setTimeout(() => onClose(), 1500);
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this claim?")) return;
+    try {
+      await claimsApi.deleteClaim(id);
+      setClaims(prev => prev.filter(c => c._id !== id));
+    } catch (err) {
+      alert("Failed to delete claim");
+    }
   };
+
+  const handleEditSuccess = () => {
+    const init = async () => {
+      try {
+        const raw = sessionStorage.getItem("userData");
+        if (!raw) return;
+        const data: LocalData = JSON.parse(raw);
+        const response = await claimsApi.getClaimsByRole(
+          data.UserID.toString(),
+          "User",
+          data.TenantID.toString()
+        );
+        setClaims(response || []);
+      } catch (err) {
+        console.error("Failed to refresh claims:", err);
+      }
+    };
+    init();
+  };
+
+  const filteredClaims = claims
+    .filter(claim => {
+      const statusLabel = getStatusConfig(claim.status).label;
+      const matchesStatus = filterStatus === "All" || statusLabel.includes(filterStatus);
+      const matchesType = filterType === "All Types" || claim.TypeDescription.includes(filterType);
+      return matchesStatus && matchesType;
+    })
+    .sort((a, b) => new Date(b.Claim_Creation_Date).getTime() - new Date(a.Claim_Creation_Date).getTime());
+
+  if (loading) return <div className="pt-24 text-center text-gray-600 text-xl">Loading your claims...</div>;
+  if (error) return <div className="pt-24 text-center text-red-600 text-xl">Error: {error}</div>;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-gradient-to-br from-[#e8f3ed] to-[#f5faf7] rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-8 my-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-[#244034]">{viewOnly ? 'View Expense' : 'Edit Expense'}</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
-          >
-            ×
-          </button>
-        </div>
+    <>
+      <div className="min-h-screen pt-20 px-4 bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-10">
+            <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-3">My Claims</h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300">Track and manage all your expense claims</p>
+          </div>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            <div className="bg-white rounded-3xl shadow-lg p-6 transform rotate-[-0.5deg] hover:rotate-0 transition-transform">
-              <label className="block text-sm font-semibold text-[#244034] mb-3">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Category)}
-                disabled={viewOnly}
-                className="w-full p-3 bg-[#f0f9f4] border-2 border-[#3c8969] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3c8969] text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <option value="Cab">🚖 Cab</option>
-                <option value="Food">🍽️ Food</option>
-                <option value="Stay">🏨 Stay</option>
-                <option value="Others">📝 Others</option>
-              </select>
-            </div>
-
-            <div className="bg-white rounded-3xl shadow-lg p-6 transform rotate-[0.5deg] hover:rotate-0 transition-transform">
-              <label className="block text-sm font-semibold text-[#244034] mb-3">Amount</label>
-              <div className="relative">
-                <span className="absolute left-3 top-3 text-gray-500 text-lg">₹</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={amount as any}
-                  onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}
-                  disabled={viewOnly}
-                  className="w-full pl-8 p-3 bg-[#f0f9f4] border-2 border-[#3c8969] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3c8969] text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                  placeholder="0.00"
-                />
+          {/* Filters */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700 p-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filter by Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="w-full px-5 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 font-medium focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition"
+                >
+                  <option>All</option>
+                  <option>Pending</option>
+                  <option>Approved</option>
+                  <option>Rejected</option>
+                </select>
               </div>
-            </div>
 
-            <div className="bg-white rounded-3xl shadow-lg p-6 transform rotate-[-0.3deg] hover:rotate-0 transition-transform">
-              <label className="block text-sm font-semibold text-[#244034] mb-3">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                disabled={viewOnly}
-                className="w-full p-3 bg-[#f0f9f4] border-2 border-[#3c8969] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3c8969] text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-              />
-            </div>
-
-            {category === "Others" && (
-              <div className="bg-white rounded-3xl shadow-lg p-6 transform rotate-[0.4deg] hover:rotate-0 transition-transform md:col-span-2">
-                <label className="block text-sm font-semibold text-[#244034] mb-3">Reason for "Others"</label>
-                <input
-                  type="text"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  disabled={viewOnly}
-                  placeholder="Provide a short reason"
-                  className="w-full p-3 bg-[#f0f9f4] border-2 border-[#3c8969] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3c8969] text-gray-800 disabled:opacity-60 disabled:cursor-not-allowed"
-                />
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Filter by Type</label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="w-full px-5 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 font-medium focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition"
+                >
+                  <option>All Types</option>
+                  <option>Cab</option>
+                  <option>Food</option>
+                  <option>Stay</option>
+                  <option>Others</option>
+                </select>
               </div>
-            )}
 
-            <div className={`bg-white rounded-3xl shadow-lg p-6 transform rotate-[0.2deg] hover:rotate-0 transition-transform ${category === "Others" ? "" : "md:col-span-2 lg:col-span-3"}`}>
-              <label className="block text-sm font-semibold text-[#244034] mb-3">Receipt</label>
-              <div className="relative">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={handleFile}
-                  disabled={viewOnly}
-                  className="w-full p-3 bg-[#f0f9f4] border-2 border-[#3c8969] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3c8969] text-gray-800 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-[#244034] file:text-white file:cursor-pointer hover:file:bg-[#3c8969] disabled:opacity-60 disabled:cursor-not-allowed"
-                />
+              <div className="flex items-end">
+                <div className="bg-gray-100 dark:bg-gray-700 px-5 py-3 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 w-full text-center">
+                  Showing <strong>{filteredClaims.length}</strong> of <strong>{claims.length}</strong> claims
+                </div>
               </div>
-              {receipt && (
-                <p className="mt-2 text-sm text-gray-600">📎 {receipt.name}</p>
-              )}
-            </div>
-
-            <div className="bg-white rounded-3xl shadow-lg p-6 transform rotate-[-0.2deg] hover:rotate-0 transition-transform md:col-span-2 lg:col-span-3">
-              <label className="block text-sm font-semibold text-[#244034] mb-3">Description (optional)</label>
-              <textarea
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={viewOnly}
-                className="w-full p-3 bg-[#f0f9f4] border-2 border-[#3c8969] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3c8969] text-gray-800 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
-                placeholder="Add any additional details..."
-              />
             </div>
           </div>
 
-          {message && (
-            <div className={`p-4 rounded-2xl ${message.includes('successfully') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              {message}
+          {/* Claims Grid */}
+          {filteredClaims.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-200 dark:border-gray-700">
+              <div className="w-24 h-24 mx-auto mb-6 bg-gray-200 dark:bg-gray-700 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl"></div>
+              <p className="text-2xl font-medium text-gray-700 dark:text-gray-200">No claims found</p>
+              <p className="text-gray-500 dark:text-gray-400 mt-2">Try adjusting your filters</p>
             </div>
-          )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-7">
+              {filteredClaims.map((claim) => {
+                const status = getStatusConfig(claim.status);
+                const canEdit = [2, 3, 4].includes(claim.status); // Pending or Rejected
 
-          {!viewOnly && (
-            <div className="flex items-center gap-4 justify-center">
-              <button
-                onClick={handleSubmit}
-                className="px-8 py-3 rounded-full bg-[#244034] text-white font-semibold hover:bg-[#3c8969] transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
-              >
-                Update Expense
-              </button>
-              <button
-                onClick={reset}
-                className="px-6 py-3 rounded-full bg-white border-2 border-gray-300 text-gray-800 font-semibold hover:bg-gray-50 transition-all shadow-md hover:shadow-lg"
-              >
-                Reset
-              </button>
+                return (
+                  <div key={claim._id} className="bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-xl transition-all border border-gray-200 dark:border-gray-700 group">
+                    <div className="p-7">
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white line-clamp-2 pr-8">{claim.Title}</h3>
+                        <i className="fa-solid fa-ellipsis-v text-gray-400 opacity-0 group-hover:opacity-100 transition"></i>
+                      </div>
+
+                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-5 line-clamp-2">{claim.Description || "No description"}</p>
+
+                      <div className="flex justify-between items-center mb-6">
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">₹{claim.Amount.toLocaleString()}</span>
+                        <span className={`ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold ${status.color}`}>
+                          <span className={`w-2 h-2 rounded-full ${status.dot}`}></span>
+                          {status.label}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-6">
+                        <div className="flex items-center gap-2">
+                          <i className="fa-regular fa-calendar"></i>
+                          {formatDate(claim.Claim_Creation_Date)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <i className="fa-solid fa-tag"></i>
+                          {claim.TypeDescription}
+                        </div>
+                      </div>
+
+                      {/* Bottom Action Bar — Clean & Consistent */}
+                      <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                        {claim.status === 5 ? (
+                          <div className="text-center text-green-600 dark:text-emerald-400 font-bold py-3 flex items-center justify-center gap-2">
+                            <i className="fa-solid fa-check-circle"></i> Fully Approved
+                          </div>
+                        ) : claim.status === 1 ? (
+                          <div className="text-center text-blue-600 dark:text-sky-400 font-medium py-3">
+                            Awaiting final approval
+                          </div>
+                        ) : canEdit ? (
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => setViewingClaim(claim)}
+                              className="flex-1 py-3 border border-gray-300 dark:border-gray-600 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-center gap-2"
+                            >
+                              <i className="fa-solid fa-eye"></i> View
+                            </button>
+                            <button
+                              onClick={() => setEditingClaim(claim)}
+                              className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                            >
+                              <i className="fa-solid fa-pen"></i> Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(claim._id)}
+                              className="p-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => setViewingClaim(claim)}
+                              className="flex-1 py-3 border border-gray-300 dark:border-gray-600 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition flex items-center justify-center gap-2"
+                            >
+                              <i className="fa-solid fa-eye"></i> View
+                            </button>
+                            <div className="flex-1 text-center text-gray-500 dark:text-gray-400 font-medium py-3">
+                              No action required
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       </div>
-    </div>
+
+      {/* Modals */}
+      {editingClaim && (
+        <ClaimModal 
+          claim={editingClaim} 
+          onClose={() => setEditingClaim(null)}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+      
+      {viewingClaim && (
+        <ClaimModal
+          claim={viewingClaim}
+          onClose={() => setViewingClaim(null)}
+          viewOnly={true}
+        />
+      )}
+    </>
   );
-}
-
-export default function MyClaims(){
-
-    const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
-    const dropdownRefs = useRef<Array<HTMLDivElement | null>>([]);
-    const [isSortedOpen, setIsSortedOpen] = useState(false);
-    const [selectedSort, setSelectedSort] = useState("All");
-    const sortRef = useRef<HTMLDivElement | null>(null);
-    const [filter, setFilter] = useState("All Claims");
-    const [editingClaim, setEditingClaim] = useState<any | null>(null);
-    const [viewingClaim, setViewingClaim] = useState<any | null>(null);
-    const [userRole, setUserRole] = useState<string>("user"); // Default to "user"
-    const [tenantId, setTenantId] = useState<string | null>(null);
-    
-    const claimsToDisplay = filter === "New" ? ClaimData.slice(-4) : ClaimData;
-
-    const filteredClaims = selectedSort === "All" ? claimsToDisplay : claimsToDisplay.filter(claim => claim.status === selectedSort);
-
-    // Fetch user role from API
-//     useEffect(() => {
-//     const fetchTenant = async () => {
-//       const res = await fetch("http://localhost:5731/get-tenant", {
-//         credentials: "include",
-//       });
-//       const data = await res.json();
-//       setTenantId(data.tenantId || "Not set");
-//     };
-
-//     fetchTenant();
-//   }, []);
-
-
-useEffect(() => {
-  const fetchUserRole = async () => {
-    try {
-      const rawData = sessionStorage.getItem("userData");
-      if (!rawData) {
-        throw new Error("Session data not found");
-      }
-
-      const localData: LocalData = JSON.parse(rawData); // safe now
-
-      const payload = {
-        appId: 298,
-        tenantID: localData.TenantID,
-        userId: localData.UserID,
-        appEnvironmentCODE: "01K7RXNBPAD7T0K1H46BP7JJGR"
-      };
-
-      const client = getDiligenceFabricSDK();
-      const response = await client.getApplicationRoleService().getUserAppRole(payload);
-      const role = response?.Result?.[0];
-      console.log("Role fetched:", role);
-      // setUserRole(role?.toLowerCase() || "user");
-    } catch (error) {
-      console.error("Error fetching user role:", error);
-      setUserRole("user"); // fallback
-    }
-  };
-
-  fetchUserRole();
-}, []);
-
-    // useEffect(() => {
-        
-    //     const fetchUserRole = async () => {
-    //         try {
-            
-    //         const rawData = sessionStorage.getItem('localData');
-    //         const localData: LocalData | null = rawData ? (JSON.parse(rawData) as LocalData) : null;
-
-    //         const payload = {
-    //         appId: 298,
-    //         tenantID: localData?.TenantID,
-    //         userId: localData?.UserID,
-    //         appEnvironmentCODE: "01K7RXNBPAD7T0K1H46BP7JJGR" };
-
-    //             // Uncomment when you have the SDK available
-    //             const client = getDiligenceFabricSDK();
-    //             const ress = client.getApplicationRoleService().getUserAppRole(payload);
-    //             // Avoid accessing private members (like appId) directly; log the service object instead.
-    //             console.log("Helllo", (await ress).Result[0]);
-                
-
-    //             //setUserRole(role.toLowerCase());
-                
-    //             // For now, simulating with a mock role - change this to test different roles
-    //             // setUserRole("admin"); // Try "admin", "manager", "user" etc.
-    //             setUserRole("user");
-    //         } catch (error) {
-    //             console.error("Error fetching user role:", error);
-    //             setUserRole("user"); // Fallback to user role
-    //         }
-    //     };
-    //     fetchUserRole();
-    // }, []);
-
-    const handleApprove = (claim: any) => {
-        console.log("Approving claim:", claim);
-        // Add your approval logic here
-        setActiveDropdown(null);
-    };
-
-    const handleReject = (claim: any) => {
-        console.log("Rejecting claim:", claim);
-        // Add your rejection logic here
-        setActiveDropdown(null);
-    };
-
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            const clickOutsideDropdown = dropdownRefs.current.every((ref) => ref && !ref.contains(event.target as Node));
-            if(
-                clickOutsideDropdown &&
-                sortRef.current &&
-                !sortRef.current.contains(event.target as Node)
-            ){
-                setIsSortedOpen(false);
-                setActiveDropdown(null);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
-    return(
-        <>
-        <div className='pt-20'>
-        <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-6'>
-            <h2 className='text-5xl font-[500] text-black py-2'> My Claims</h2>
-
-            <div className='flex flex-col sm:flex-row items-start md:items-center gap-4 bg-[#f0f5f3] p-4 rounded-xl'>
-                <div className='flex items-center gap-2'>
-                    <button onClick={() => setFilter("All Claims")} 
-                    className={`px-5 py-1.5 rounded-full font-[600] text-sm 
-                    ${filter === "All Claims" ? 'bg-[#d9f04f] text-[#244034]' : 'bg-[#e0e2e1] text-[#044034] hover:bg-gray-200'}`}>
-                        All
-                    </button>
-                    <button onClick={() => setFilter("New")} 
-                    className={`px-5 py-1.5 rounded-full font-[600] text-sm 
-                    ${filter === "New" ? 'bg-[#d9f04f] text-[#244034]' : 'bg-[#e0e2e1] text-[#044034] hover:bg-gray-200'}`}>
-                        New
-                    </button>
-                </div>
-                <div className="flex items-center gap-2 relative" ref={sortRef}>
-                        <span className='text-[#244034] text-lg font-[500]'>
-                            Sort by:
-                        </span>
-
-                        <button 
-                          onClick={() => setIsSortedOpen(!isSortedOpen)}
-                          className='w-[180px] px-3 py-2 border border-gray-300 rounded-full flex items-center justify-between cursor-pointer'
-                          aria-expanded={isSortedOpen}
-                        >
-                            <span>{selectedSort}</span>
-                            <i className="fa-solid fa-angle-down" aria-hidden="true"></i>
-                        </button>
-
-                        <ul className={`absolute top-full right-0 mt-2 w-[180px] bg-white rounded-lg shadow-md z-50 border border-gray-200 py-2 transition-all duration-200 origin-top ${isSortedOpen ? 'scale-100 opacity-100 visible' : 'scale-95 opacity-0 invisible'}`}>
-                            {["All", "Approved", "Pending", "Rejected"].map((option) => (
-                                <li 
-                                key={option}
-                                onClick={() => {
-                                    setSelectedSort(option);
-                                    setIsSortedOpen(false);
-                                }}
-                                className={`px-4 py-2 text-md rounded-md transition hover:bg-gray-100 cursor-pointer ${selectedSort === option ? 'text-[#3c8968] font-medium' : 'text-gray-800'}`}>
-                                    {option}
-                                </li>
-                            ))}
-                        </ul>
-                </div>
-            </div>
-        </div>
-        <div className='bg-white p-6 md:p-10 rounded-xl overflow-x-auto shadow-md'>
-        <table className='min-w-full table-auto'>
-            <thead className='bg-[#eaf5f2] text-gray-600 text-left hidden md:table-header-group'>
-                <tr>
-                    <th className='py-3 px-4 text-lg font-[500] text-[#244034]'>Title</th>
-                    <th className='py-3 px-4 text-lg font-[500] text-[#244034]'>Claim Created</th>
-                    <th className='py-3 px-4 text-lg font-[500] text-[#244034]'>Amount</th>
-                    <th className='py-3 px-4 text-lg font-[500] text-[#244034]'>Status</th>
-                    <th className='py-3 px-4 text-lg font-[500] text-[#244034]'>Type</th>
-                    <th className='py-3 px-4 text-lg font-[500] text-[#244034]'>Actions</th>
-                </tr>
-            </thead>
-            <tbody className='text-gray-700 text-xs md:text-md'>
-                {filteredClaims.map((claim, index) => (
-                    <tr key={index} 
-                    className="border-b border-gray-200 flex flex-col md:table-row md:flex-row gap-4 md:gap-0 py-4
-                    md:py-0 px-4 md:px-0 hover:bg-gray-50">
-                        <td className='md:py-4 md:px-4'>
-                            <div className='md:font-[500] md:text-lg'>
-                                <span className='block md:hidden font-semibold text-sm text-gray-500 mr-2'>Title:</span>
-                                <div className='text-lg font-[500]'>
-                                    {claim.title}
-                                </div>
-                                <div className='text-base font-[300] text-[rgba(36,64,52,.7)]'>
-                                    {claim.type} - {claim.location}
-                                </div>
-                            </div>
-                        </td>
-                        <td className='md:py-4 md:px-4 text-lg font-[300] text-[#212529]'>
-                            <span className='block md:hidden font-semibold text-sm text-gray-500 mr-2'>Claim Created:</span>
-                            {claim.date}
-                        </td>
-                        <td className='md:py-4 md:px-4 text-lg font-[300] text-[#212529]'>
-                            <span className='block md:hidden font-semibold text-sm text-gray-500 mr-2'>Amount</span>
-                            {claim.amount} Rupees
-                        </td>
-                        <td className='md:py-4 md:px-4'>
-                            <span className='block md:hidden font-semibold text-sm text-gray-500 mr-2'>Status</span>
-                            <span className='inline-flex items-center gap-2'>
-                                <span className={`h-2 w-2 rounded-full ${statusColors[claim.status]}`}></span>
-                                <span className='text-lg text-[#212529] font-[300]'>
-                                    {claim.status}
-                                </span>
-                            </span>
-                        </td>
-                        <td className='md:py-4 md:px-4 relative'
-                        ref={el => dropdownRefs.current[index] = el}>
-                            <span className='block md:hidden font-semibold text-sm text-gray-500 mr-2'>Actions</span>
-                            <i className="fa-solid fa-ellipsis cursor-pointer
-                             w-full text-right text-xl text-gray-400"
-                             onClick={() => setActiveDropdown((prev) => (prev === index ? null : index))
-                             }>
-                            </i>
-                            {activeDropdown === index && (
-                                <ul className='absolute space-y-2 right-0 mt-2 min-w-[140px] bg-white rounded-lg z-50 p-5'
-                                style={{boxShadow: '0 30px 60px rgba(0, 0, 0, 0.1)',
-                                border: '1px solid #f1f1f1'
-                                }}>
-                                    {userRole !== "user" ? (
-                                        // Admin/Manager Actions
-                                        <>
-                                            <li 
-                                                onClick={() => {
-                                                    setViewingClaim(claim);
-                                                    setActiveDropdown(null);
-                                                }}
-                                                className='text-base rounded-md transition hover:bg-gray-100 cursor-pointer flex items-center gap-3'>
-                                                <img src={eye} alt="view-icon" className='w-4 h-4'/>
-                                                View
-                                            </li>
-                                            <li 
-                                                onClick={() => handleApprove(claim)}
-                                                className='text-base rounded-md transition hover:bg-green-50 cursor-pointer flex items-center gap-3 text-green-700'>
-                                                <span className='text-lg'>✓</span>
-                                                Approve
-                                            </li>
-                                            <li 
-                                                onClick={() => handleReject(claim)}
-                                                className='text-base rounded-md transition hover:bg-red-50 cursor-pointer flex items-center gap-3 text-red-700'>
-                                                <span className='text-lg'>✗</span>
-                                                Reject
-                                            </li>
-                                        </>
-                                    ) : (
-                                        // User Actions
-                                        <>
-                                            <li 
-                                                onClick={() => {
-                                                    setViewingClaim(claim);
-                                                    setActiveDropdown(null);
-                                                }}
-                                                className='text-base rounded-md transition hover:bg-gray-100 cursor-pointer flex items-center gap-3'>
-                                                <img src={eye} alt="view-icon" className='w-4 h-4'/>
-                                                View
-                                            </li>
-                                            <li 
-                                                onClick={() => {
-                                                    setEditingClaim(claim);
-                                                    setActiveDropdown(null);
-                                                }}
-                                                className='text-base rounded-md transition hover:bg-gray-100 cursor-pointer flex items-center gap-3'>
-                                                <img src={edit} alt="edit-icon" className='w-4 h-4'/>
-                                                Edit
-                                            </li>
-                                            <li className='text-base rounded-md transition hover:bg-gray-100 cursor-pointer flex items-center gap-3'>
-                                                <img src={deletion}
-                                                    alt="delete-icon" className='w-4 h-4'/>
-                                                Delete
-                                            </li>
-                                        </>
-                                    )}
-                                </ul>
-                            )}  
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-        </div>
-    </div>
-
-    {editingClaim && (
-        <EditModal 
-            claim={editingClaim} 
-            onClose={() => setEditingClaim(null)} 
-        />
-    )}
-
-    {viewingClaim && (
-        <EditModal 
-            claim={viewingClaim} 
-            onClose={() => setViewingClaim(null)}
-            viewOnly={true}
-        />
-    )}
-        </>
-    )
 }

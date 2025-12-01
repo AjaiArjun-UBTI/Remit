@@ -25,7 +25,7 @@ const Toast = Swal.mixin({
 
 const Login: React.FC = () => {
   const [type, setType] = useState("password");
-  const [icon, setIcon] = useState("FaEyeSlash");
+  // const [icon, setIcon] = useState("FaEyeSlash");
   const [loading, setLoading] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -42,7 +42,25 @@ const Login: React.FC = () => {
       setRememberMeCheck(true)
     }
 
+    const testBackend = async () => {
+    try {
+      const res = await fetch("https://remitbackend-e5fahqdyejczf9ff.canadacentral-01.azurewebsites.net/");
+      const data = await res.json();
+      console.log("Backend alive:", data);
+      // Optional: show a tiny toast
+      Toast.fire({
+        icon: "success",
+        title: "Backend connected",
+        timer: 2000,
+      });
+    } catch (err) {
+      console.warn("Backend not reachable yet");
+    }
+  };
 
+  testBackend();
+
+    
     const fetchMsalConfig = async () => {
       try {
         const client = getDiligenceFabricSDK()
@@ -52,10 +70,11 @@ const Login: React.FC = () => {
           CalledBy: undefined
         }
         const response = await client.getAuthenticationTypeService().getAuthenticationType(AuthenticationTypeList)
+        
 
         const msalConfig = {
           auth: {
-            clientId: response.Result.ClientOrAppIDConfig,
+            clientId: (response.Result as any).ClientOrAppIDConfig?? (response.Result as any).clientOrAppIDConfig,
             authority: `https://login.microsoftonline.com/common`,
             redirectUri: window.location.origin + "/login",
           },
@@ -115,13 +134,14 @@ const Login: React.FC = () => {
       if (response.Result && response.Result.TenantID === config.DF_TENANT_ID) {
         localStorage.setItem("userData", JSON.stringify(response.Result));
         sessionStorage.setItem("userData", JSON.stringify(response.Result));
+        sessionStorage.setItem("appEnvironmentCODE", JSON.stringify("01K7RXNBPAD7T0K1H46BP7JJGR"))
         Toast.fire({
           icon: "success",
           text: "Login successful!",
           background: "green",
           color: "white",
         });
-        navigate("/home");
+        navigate("/");
       }
       else {
         throw new Error(response.Message || "Login failed");
@@ -177,6 +197,8 @@ const Login: React.FC = () => {
       setLoading(false);
     }
   };
+
+  
 
   return (
     <div className="flex flex-col items-center justify-center px-3 py-3 mx-auto md:h-screen lg:py-0 bg-primary-100">

@@ -18,7 +18,7 @@ const ForgotPassword: React.FC = () => {
         try {
             const client = getDiligenceFabricSDK();
 
-            const response = await client.getAuthService().forgotPassword({email : workEmail});
+            const response:any = await client.getAuthService().forgotPassword({email : workEmail});
             console.log(response);
              
             if (response.StatusCode == 200) {

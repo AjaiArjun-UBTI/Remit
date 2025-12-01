@@ -20,5 +20,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../Server/MongoDB", "../Server/DB", "../Server/Routes", "../Server/server.ts"]
+  "include": ["src", "../Server/MongoDB", "../Server/DB", "../Server/Routes", "../Server/server.ts", "../Server/Routes/demensions.ts"]
 }
