@@ -38,7 +38,7 @@ export interface LocalData {
   LastName: string;
 }
 
-const API_BASE_URL = 'http://localhost:5050';
+const API_BASE_URL = 'https://project-nine-rho-47.vercel.app/';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
